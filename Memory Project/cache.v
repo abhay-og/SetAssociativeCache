@@ -1,9 +1,8 @@
 `timescale 1ps/100fs
-
 module file #(parameter I_SZ=50)  (input [31:0] j, output reg[I_SZ-1:0] ins);
-reg[I_SZ-1:0] data[0:9999];
+reg[I_SZ-1:0] data[0:9074];
 initial begin 
-    $readmemh("instructions.txt",data); 
+    $readmemh("mm16.txt",data); 
 end
 integer i;
 initial begin
@@ -14,19 +13,19 @@ always @(j) begin
     ins=data[j];
 end 
 endmodule
-
 module cache_mem;
-parameter M=65536;                 //number of words in main memory
-parameter B=2;                 // number of words in each block
-parameter W=32;                 //number of bits in each word
-parameter A=4;                  //associativity / number of ways
-parameter N=256;                 //number of sets in cache
-parameter I_SZ=50;             //number of bits in the instruction
-parameter ADD_SZ=16;           //number of bits in the address
-parameter TAG_SZ=7;            //number of bits in the tag;
-parameter BLK_OFF_SZ=1;        //number of bits in block offset
-parameter IND_SZ=8;            //number of bits in the index size
+parameter M=67108864;                 //number of words in main memory
+parameter B=64;                 // number of words in each block
+parameter W=8;                 //number of bits in each word
+parameter A=1;                  //associativity / number of ways
+parameter N=512;                 //number of sets in cache
+parameter I_SZ=28;             //number of bits in the instruction
+parameter ADD_SZ=26;           //number of bits in the address
+parameter TAG_SZ=11;            //number of bits in the tag;
+parameter BLK_OFF_SZ=6;        //number of bits in block offset
+parameter IND_SZ=9;            //number of bits in the index size
 reg valid[N-1:0][A-1:0];
+reg modified[N-1:0][A-1:0];
 reg[TAG_SZ-1:0] tags[N-1:0][A-1:0];
 reg temp_valid;
 reg[TAG_SZ-1:0] temp_tag;
@@ -42,10 +41,9 @@ reg[31:0] cnt;
 reg[A-1:0] comp;
 reg[A-1:0] hit;
 reg fn_hit;
-reg[W-1:0] read_data;
-assign address=instruction[I_SZ-1:I_SZ-ADD_SZ];
-assign rd=instruction[1];
-assign wr=instruction[0];
+assign rd=instruction[I_SZ-1: I_SZ-2];
+assign wr=instruction[I_SZ-2:I_SZ-3];
+assign address=instruction[I_SZ-4:0];
 assign tag=address[ADD_SZ-1:ADD_SZ-TAG_SZ];
 assign index=address[ADD_SZ-TAG_SZ-1:ADD_SZ-TAG_SZ-IND_SZ];
 assign block_offset=address[BLK_OFF_SZ-1:0];
@@ -64,6 +62,7 @@ initial begin
     for(integer i=0;i<N;i++)begin
         for(integer j=0;j<A;j++) begin
             valid[i][j]=1'b0;
+            modified[i][j]=1'b0;
             tags[i][j]=$random%65536;
         end
     end
@@ -88,66 +87,60 @@ always@(posedge clk) begin
     if(fn_hit) begin
         hits=hits+1;
         for(integer i=0;i<A;i++) begin
-            if(hit[i]) begin //i'th way has a hit
-                if(rd) begin  // in case of a read signal
-                    for(integer j=A-1;j>i;j--) begin
-                        if(valid[index][j]) begin
-                            temp_tag=tags[index][i];
-                            temp_valid=valid[index][i];
-                            for(integer k=i;k<j;k++) begin
-                                valid[index][k]=valid[index][k+1];
-                                tags[index][k]=tags[index][k+1];
-                            end
-                            valid[index][j]=temp_valid;
-                            tags[index][j]=temp_tag;
+            if(hit[i]) begin 
+                for(integer j=A-1;j>i;j--) begin
+                    if(valid[index][j]) begin
+                        temp_tag=tags[index][i];
+                        temp_valid=valid[index][i];                     
+                        for(integer k=i;k<j;k++) begin
+                            valid[index][k]=valid[index][k+1];
+                            tags[index][k]=tags[index][k+1];
                         end
-                    end
-                end
-                else if(wr) begin   //in case of write , write back is implemented
-                    for(integer j=A-1;j>i;j--) begin
-                        if(valid[index][j]) begin
-                            temp_tag=tags[index][i];
-                            temp_valid=valid[index][i];                     
-                            for(integer k=i;k<j;k++) begin
-                                valid[index][k]=valid[index][k+1];
-                                tags[index][k]=tags[index][k+1];
-                            end
-                            valid[index][j]=temp_valid;
-                            tags[index][j]=temp_tag;
+                        valid[index][j]=temp_valid;
+                        tags[index][j]=temp_tag;
+                        if(wr) begin
+                            modified[index][j]=1'b1;
                         end
                     end
                 end
             end
         end
     end
-    else begin //in case of a miss
+    else begin
         miss=miss+1;
-        if(valid[A-1][index]) begin
+        if(valid[index][0]==1'b0) begin
+            valid[index][0]=1'b1;
+            tags[index][0]=tag;
+            if(wr) begin
+                modified[index][0]=1'b1;
+            end
+        end
+        else if(valid[index][A-1]) begin
             for(integer k=1;k<A-1;k++) begin
                 valid[index][k]=valid[index][k+1];
                 tags[index][k]=tags[index][k+1];
             end
+            if(wr) begin
+                modified[index][A-1]=1'b0;
+            end
         end
-        else begin    //some ways are invalid and hence block must be filled
+        else begin  
             for(integer i=0;i<A-1;i++) begin
-                if((valid[index][i]) &(valid[index][i+1]==1'b0)) begin   //all the ways upto i are valid
+                if((valid[index][i]) &(valid[index][i+1]==1'b0)) begin   
                     pos=i+1;
                 end
             end
             valid[index][pos]=1'b1;
             tags[index][pos]=tag;
-
-        end
-        if(valid[index][0]==1'b0)  begin
-            valid[index][0]=1'b1;
-            tags[index][0]=tag;
+            if(wr) begin
+            modified[index][pos]=1'b1;
+            end
         end
     end
-    if(cnt==41832) begin
+    if(cnt==9075) begin
         $display("Number of hits = %d",hits);
         $display("Number of misses = %d",miss);
         $display("Total number of tries = %d",tries);
-        $display($time);
         $finish;
     end
 end
