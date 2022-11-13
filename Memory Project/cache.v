@@ -108,6 +108,11 @@ always@(posedge clk) begin
     end
     else begin
         miss=miss+1;
+        for(integer i=0;i<N;i++) begin
+            for(integer kk=0;kk<A;kk++)begin
+                modified[i][kk]=1'b0;
+            end
+        end
         if(valid[index][0]==1'b0) begin
             valid[index][0]=1'b1;
             tags[index][0]=tag;
@@ -121,7 +126,7 @@ always@(posedge clk) begin
                 tags[index][k]=tags[index][k+1];
             end
             if(wr) begin
-                modified[index][A-1]=1'b0;
+                modified[index][A-1]=1'b1;
             end
         end
         else begin  
