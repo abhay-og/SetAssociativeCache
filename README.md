@@ -8,12 +8,26 @@ This project is an implementation of set associative cache with variable number 
 ![image](https://user-images.githubusercontent.com/102411194/201526894-59c20c13-129e-4327-a77a-7cd76c48ed3f.png)
 
 Description about configurations:-
+
+
 Configuration 1
+
+
 Cache size - 32KB, set size - 64B, Associativity - 8 ways
+
+
 Configuration 2
+
+
 Cache size - 32KB, set size - 64B, Direct mapped 
+
+
 Configuration 3
+
+
 Cache size - 16KB, set size - 64B, Associativity - 16 ways
+
+
 
 ## Description of Directory Structure: ##
 
