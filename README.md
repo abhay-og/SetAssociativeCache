@@ -1,4 +1,4 @@
-<center> # N-Way set associative changes # </center>
+<center> <h1> N-Way set associative changes </h1> </center>
 
 ![image](https://user-images.githubusercontent.com/102411194/201526894-59c20c13-129e-4327-a77a-7cd76c48ed3f.png)
 
