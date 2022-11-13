@@ -1,4 +1,8 @@
- <h1 align="center"> N-Way set associative changes </h1>
+# N-Way set associative changes #
+
+This project is an implementation of set associative cache with variable number of ways, sets and memory and block sizes. The "cache.v" file inside the memory project directory gave the following results when run on the traces given below. 
+
+(The traces can also be found in the memory project directory where the files are named lu,mm16,mm32 and qsort.)
 
 ![image](https://user-images.githubusercontent.com/102411194/201526894-59c20c13-129e-4327-a77a-7cd76c48ed3f.png)
 
