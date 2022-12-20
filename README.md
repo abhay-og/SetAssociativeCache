@@ -16,6 +16,7 @@ Configuration 1
 Cache size - 32KB, set size - 64B, Associativity - 8 ways
 
 
+
 Configuration 2
 
 
